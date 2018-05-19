@@ -1,0 +1,24 @@
+{
+  "name": "alexa-project3",
+  "version": "1.0.0",
+  "description": "An alexa skill to help with the management of the ducat currency on warframe",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lcuba/alexa-ducats.git"
+  },
+  "author": "lcuba",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lcuba/alexa-ducats/issues"
+  },
+  "homepage": "https://github.com/lcuba/alexa-ducats#readme",
+  "dependencies": {
+    "alexa-sdk": "^1.0.25",
+    "aws-sdk": "^2.243.1",
+    "es6-promisify": "^6.0.0"
+  }
+}
