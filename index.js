@@ -5,6 +5,7 @@ const awsSDK = require('aws-sdk');
 const appId = 'amzn1.ask.skill.2b268e97-c65e-477a-9b47-c3de27b7d18e';
 const groceryListTable = 'Groceries';
 const docClient = new awsSDK.DynamoDB.DocumentClient();
+const ua = require('universal-analytics');
 
 // convert callback style functions to promises
 /*const dbScan = promisify(docClient.scan, docClient);
@@ -31,6 +32,7 @@ const handlers = {
   'NewGroceryItemIntent'() {
     const { userId } = this.event.session.user;
     const { slots } = this.event.request.intent;
+    const intentTrackingID = ua('UA-119699645-1');
 
     // prompt for slot values and request a confirmation
 
@@ -39,6 +41,7 @@ const handlers = {
       const slotToElicit = 'GroceryItemName';
       const speechOutput = 'What would you like to add to your grocery list?';
       const repromptSpeech = 'Please tell me what you would like to add to your grocery list.';
+      intentTrackingID.event("unconfirmed","unconfirmed but valid slot value").send();
       return this.emit(':elicitSlot', slotToElicit, speechOutput, repromptSpeech);
     }
     else if (slots.GroceryItemName.confirmationStatus !== 'CONFIRMED') {
@@ -52,12 +55,13 @@ const handlers = {
       }
 
       // slot status: denied -> reprompt for slot data
+      intentTrackingID.event("denied", "slot value " + slots.GroceryItemName.value + " denied by user").send();
       const slotToElicit = 'GroceryItemName';
       const speechOutput = 'What would you like to add to your grocery list?';
       const repromptSpeech = 'Please tell me what you would like to add to your grocery list.';
       return this.emit(':elicitSlot', slotToElicit, speechOutput, repromptSpeech);
     }
-
+    intentTrackingID.event("success", "slot value confirmed as " + slots.GroceryItemName.value).send();
     // all slot values received and confirmed, now add the record to DynamoDB
 
     const name = slots.GroceryItemName.value;
@@ -111,6 +115,8 @@ const handlers = {
     const { userId } = this.event.session.user;
     const { slots } = this.event.request.intent;
     let output;
+    const intentTrackingID = ua('UA-119699645-1');
+    intentTrackingID.event("read all pending", "attempting to read grocery list from database").send();
 
     const dynamoParams = {
       TableName: groceryListTable
@@ -138,16 +144,19 @@ const handlers = {
       .catch(err => {
         console.error(err);
       });
+      intentTrackingID.event("read all success", "successfully read grocery list from database").send();
   },
   //intent to remove a single, specified item from the grocery list
   'RemoveGroceryItemIntent'() {
     const { slots } = this.event.request.intent;
+    const intentTrackingID = ua('UA-119699645-1');
 
     // prompt for the grocery item name if needed and then require a confirmation
     if (!slots.GroceryItemName.value) {
       const slotToElicit = 'GroceryItemName';
       const speechOutput = 'What item would you like to remove from your grocery list?';
       const repromptSpeech = 'Please say what item you would like to remove';
+      intentTrackingID.event("delete unconfirmed","unconfirmed but valid slot value for deletion").send();
       return this.emit(':elicitSlot', slotToElicit, speechOutput, repromptSpeech);
     }
     else if (slots.GroceryItemName.confirmationStatus !== 'CONFIRMED') {
@@ -161,11 +170,13 @@ const handlers = {
       }
 
       // slot status: denied -> reprompt for slot data
+      intentTrackingID.event("delete denied", "slot value " + slots.GroceryItemName.value + " denied by user for deletion").send();
       const slotToElicit = 'GroceryItemName';
       const speechOutput = 'What item would you like to remove from your grocery list?';
       const repromptSpeech = 'Please say what item you would like to remove';
       return this.emit(':elicitSlot', slotToElicit, speechOutput, repromptSpeech);
     }
+    intentTrackingID.event("delete success", "slot value " + slots.GroceryItemName.value + " confirmed by user for deletion").send();
 
     const { userId } = this.event.session.user;
     const groceryItem = slots.GroceryItemName.value;
@@ -206,20 +217,28 @@ const handlers = {
   'Unhandled'() {
     console.error('problem', this.event);
     this.emit(':ask', 'An unhandled problem occurred!');
+    const intentTrackingID = ua('UA-119699645-1');
+    intentTrackingID.event("error", "an unhandled exception occurred (alexa misheard)").send();
   },
 
   'AMAZON.HelpIntent'() {
     const speechOutput = instructions;
     const reprompt = instructions;
     this.emit(':ask', speechOutput, reprompt);
+    const intentTrackingID = ua('UA-119699645-1');
+    intentTrackingID.event("help request", "user asked for help").send();
   },
 
   'AMAZON.CancelIntent'() {
     this.emit(':tell', 'Goodbye!');
+    const intentTrackingID = ua('UA-119699645-1');
+    intentTrackingID.event("session end", "user ended the session manually").send();
   },
 
   'AMAZON.StopIntent'() {
     this.emit(':tell', 'Goodbye!');
+    const intentTrackingID = ua('UA-119699645-1');
+    intentTrackingID.event("session end", "user ended the session manually").send();
   }
 };
 
